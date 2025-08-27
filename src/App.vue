@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import axios from 'axios';
 
 const imageUrl = ref('')
 const correctBreed = ref('')
@@ -14,6 +15,7 @@ const highscoreSaved = ref(false)
 let allBreeds = []
 let intervalId = null
 const buttonsDisabled = ref(false)
+const API_URL = '/.netlify/functions/highscores';
 
 async function fetchAllBreeds() {
   const res = await fetch('https://dog.ceo/api/breeds/list/all')
@@ -82,18 +84,27 @@ function checkGuess(selected) {
   }
 }
 
-function loadHighscores() {
-  const saved = localStorage.getItem("dogbreed_highscores");
-  highscores.value = saved ? JSON.parse(saved) : [];
+async function loadHighscores() {
+  try {
+    const res = await axios.get(API_URL);
+    highscores.value = res.data;
+  } catch (err) {
+    highscores.value = [];
+  }
 }
 
-function saveHighscore() {
+async function saveHighscore() {
   if (!playerName.value.trim()) return;
-  highscores.value.push({ name: playerName.value.trim(), score: score.value });
-  highscores.value.sort((a, b) => b.score - a.score);
-  highscores.value = highscores.value.slice(0, 10); // top 10
-  localStorage.setItem("dogbreed_highscores", JSON.stringify(highscores.value));
-  highscoreSaved.value = true;
+  try {
+    await axios.post(API_URL, {
+      name: playerName.value.trim(),
+      score: score.value
+    });
+    highscoreSaved.value = true;
+    await loadHighscores();
+  } catch (err) {
+    // handle error
+  }
 }
 
 onMounted(() => {
